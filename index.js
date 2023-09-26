@@ -37,7 +37,7 @@ async function run() {
       if(checkChanges){
         await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
       } else {
-        console.log("No files changed from the previous commit to send to Discovery Service")
+        core.setOutput('action-result', "No files changed from the previous commit to send to Discovery Service");
       }
     } else {
       await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
