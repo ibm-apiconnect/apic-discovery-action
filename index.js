@@ -5,29 +5,54 @@ const { createOrUpdateDiscoveredApi } = require('./discovery-client');
 // most @actions toolkit packages have async methods
 async function run() {
   try {
-
-    let apisLocation,isFolder;
+    let isFolder = false;
     const githubServer = new URL(process.env['GITHUB_SERVER_URL']).hostname;
     const repoLocation = process.env['GITHUB_REPOSITORY'];
-
     const workspacePath = process.env['GITHUB_WORKSPACE'];
     const apihost = core.getInput('api_host');
     const apikey = core.getInput('api_key');
     const porg = core.getInput('provider_org');
     const datasourceCheck = core.getInput('resync_check');
+    const apisLocation = core.getInput('api_files') || core.getInput('api_folders');
+    const filesChanged = core.getInput('git_diff');
+ 
+    if(core.getInput('api_files')){
+      isFolder = false;
+    } else if(core.getInput('api_folders')){
+      isFolder = true;
+    }
+    if(filesChanged.trim() && apisLocation){
+      let checkChanges = false;
+      let filesArray = filesChanged.split(" ");
+      let apisLocationArray = apisLocation.split(",");
+      if(isFolder){
+        for(let name of apisLocationArray){
+          checkChanges = filesArray.find(file => file.includes(name.trim())) || checkChanges;
+        }
+      } else {
+        for(let name of apisLocationArray){
+          checkChanges = filesArray.includes(name.trim()) || checkChanges;
+        }
+      }
+      if(checkChanges){
+        await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
+      } else {
+        console.log("No files changed from the previous commit to send to Discovery Service")
+      }
+    } else {
+      await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
+    }
+  } catch (error) {
+    core.setFailed(error.message);
+  }
+}
 
+async function execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation){
+  try{
     core.info(`apihost ${apihost}`);
     core.info(`porg ${porg}`);
+    isFolder && core.info(`apifolders ${apisLocation}`) || core.info(`apifiles ${apisLocation}`);
     core.info(`datasourceCheck ${datasourceCheck}`);
-    if(core.getInput('api_files')){
-      apisLocation = core.getInput('api_files');
-      core.info(`apifiles ${apisLocation}`);
-      isFolder = false;
-     } else if(core.getInput('api_folders')){
-      apisLocation = core.getInput('api_folders');
-      core.info(`apifolders ${apisLocation}`);
-      isFolder = true;
-     }
 
     var resp = await createOrUpdateDiscoveredApi(workspacePath, apihost, apikey, porg, apisLocation, githubServer+"/"+repoLocation, datasourceCheck, isFolder);
     core.info(`response: status: ${resp.status}, message: ${resp.message[0]}`);

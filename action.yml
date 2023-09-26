@@ -19,6 +19,9 @@ inputs:
   resync_check:
      description: 'Indicates if a check for datasource existance and resync is required'
      required: false
+  git_diff:
+    description: 'Files changed between current and previous commit'
+    required: false
 
 outputs:
   action-result:
