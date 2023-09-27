@@ -1,0 +1,206 @@
+root: true
+
+extends: eslint:recommended
+
+parserOptions:
+  ecmaVersion: 9
+
+rules:
+  strict:
+    - 2
+    - global
+  require-yield:
+    - 0
+  no-console:
+    - 0
+  array-bracket-spacing:
+    - 2
+    - always
+  block-spacing:
+    - 2
+    - always
+  brace-style:
+    - 2
+    - 1tbs
+    -
+      allowSingleLine: false
+  camelcase:
+    - 0
+  comma-spacing:
+    - 2
+    - before: false
+      after: true
+  comma-style:
+    - 2
+    - last
+  computed-property-spacing:
+    - 2
+    - never
+  consistent-this:
+    - 2
+    - this
+  func-names:
+    - 0
+  eol-last:
+    - 2
+  id-length:
+    - 0
+  id-match:
+    - 0
+  indent:
+    - 2
+    - 4
+    -
+      SwitchCase: 0
+      CallExpression:
+        arguments: off
+      MemberExpression: off
+      flatTernaryExpressions: false
+      VariableDeclarator:
+        var: 2
+        let: 2
+        const: 2
+  key-spacing:
+    - 2
+    - beforeColon: false
+      afterColon: true
+      mode: strict
+  linebreak-style:
+    - 2
+    - unix
+  lines-around-comment:
+    - 0
+    - beforeBlockComment: false
+      afterBlockComment: false
+      beforeLineComment: false
+      afterLineComment: false
+      allowBlockStart: false
+      allowBlockEnd: false
+      allowObjectStart: false
+      allowObjectEnd: false
+      allowArrayStart: false
+      allowArrayEnd: false
+  max-depth:
+    - 1
+    - 10
+  max-len:
+    - 0
+  max-nested-callbacks:
+    - 0
+  max-params:
+    - 0
+  max-statements:
+    - 0
+  new-parens:
+    - 2
+  newline-after-var:
+    - 0
+  no-array-constructor:
+    - 2
+  no-bitwise:
+    - 2
+  no-buffer-constructor:
+    - 1
+  no-continue:
+    - 0
+  no-lonely-if:
+    - 2
+  no-mixed-spaces-and-tabs:
+    - 2
+  no-multiple-empty-lines:
+    - 2
+    - max: 3
+      maxEOF: 0
+  no-negated-condition:
+    - 0
+  no-new-object:
+    - 2
+  no-useless-escape:
+    - 0
+  no-unused-vars:
+    - 0
+  disallow-plusplus:
+    - 0
+  no-restricted-syntax:
+    - 0
+  no-spaced-func:
+    - 2
+  no-ternary:
+    - 0
+  no-trailing-spaces:
+    - 2
+  no-underscore-dangle:
+    - 0
+  no-unneeded-ternary:
+    - 2
+  object-curly-spacing:
+    - 2
+    - always
+  one-var:
+    - 2
+    - never
+  operator-assignment:
+    - 2
+    - always
+  operator-linebreak:
+    - 2
+    - after
+  padded-blocks:
+    - 0
+  quote-props:
+    - 2
+    - as-needed
+  quotes:
+    - 2
+    - single
+  require-jsdoc:
+    - 0
+  semi-spacing:
+    - 2
+    - before: false
+      after: true
+  semi:
+    - 2
+    - always
+  sort-vars:
+    - 0
+  keyword-spacing:
+    - 2
+    - before: true
+      after: true
+  space-before-blocks:
+    - 2
+    - functions: always
+      keywords: always
+  space-before-function-paren:
+    - 2
+    - never
+  space-in-parens:
+    - 2
+    - never
+  space-infix-ops:
+    - 2
+  space-unary-ops:
+    - 2
+    - words: true
+      nonwords: false
+  spaced-comment:
+    - 2
+    - always
+    - exceptions:
+        - '-'
+        - '='
+        - '+'
+  wrap-regex:
+    - 2
+  eqeqeq: 2
+  curly: 2
+
+  generator-star-spacing:
+    - 2
+    - before: false
+      after: true
+
+env:
+  node: true
+  es6: true

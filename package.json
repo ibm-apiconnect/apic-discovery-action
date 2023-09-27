@@ -4,7 +4,7 @@
   "description": "JavaScript Action Template",
   "main": "index.js",
   "scripts": {
-    "lint": "eslint .",
+    "lint": "find $VELOX/ibm-apiconnect/apic-discovery-action/* -path $VELOX/ibm-apiconnect/apic-discovery-action/node_modules -prune -o -name '*.js' -exec eslint --ignore-pattern 'dist/' {} \\+",
     "prepare": "ncc build index.js -o dist --source-map --license licenses.txt",
     "test": "jest",
     "all": "npm run lint && npm run prepare && npm run test"

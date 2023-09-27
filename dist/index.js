@@ -4,6 +4,8 @@ require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /***/ 607:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
+"use strict";
+
 const fs = __nccwpck_require__(7147);
 const path = __nccwpck_require__(1017);
 const yaml = __nccwpck_require__(1917);
@@ -11,169 +13,169 @@ const FormData = __nccwpck_require__(4334);
 const axios = __nccwpck_require__(8757);
 const AdmZip = __nccwpck_require__(6761);
 
-const COLLECTOR_TYPE = "github";
+const COLLECTOR_TYPE = 'github';
 // process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 const zip = new AdmZip();
-const outputFile = "multipleAPIfiles.zip";
+const outputFile = 'multipleAPIfiles.zip';
 
-let createOrUpdateDiscoveredApi = async function (workspacePath, apihost, apikey, porg, apisLocation, dataSourceLocation, dataSourceCheck, isFolder) {
-    if(!apisLocation){
-        return {status: 400, message: [`Error: create Or Update Discovered Api not run as API files or API folders parameter is missing or Empty`]}
+let createOrUpdateDiscoveredApi = async function(workspacePath, apihost, apikey, porg, apisLocation, dataSourceLocation, dataSourceCheck, isFolder) {
+    if (!apisLocation) {
+        return { status: 400, message: [ 'Error: create Or Update Discovered Api not run as API files or API folders parameter is missing or Empty' ] };
     }
-    const apisArray = apisLocation.split(",");
+    const apisArray = apisLocation.split(',');
     const isMultiple = apisArray.length > 1;
-    let resp, stateUpdateContent;
+    let resp; let stateUpdateContent;
     let curlUrl = `https://discovery-api.${apihost}/discovery/orgs/${porg}/discovered-apis`;
-    if (!apikey){
-        return {status: 304, message: [`Warning: create Or Update Discovered Api not run as apikey is missing`]}
+    if (!apikey) {
+        return { status: 304, message: [ 'Warning: create Or Update Discovered Api not run as apikey is missing' ] };
     }
     var token = await getAuthToken(apihost, apikey);
     if (dataSourceCheck) {
         await checkAndRegisterDataSource(apihost, token, porg, dataSourceLocation);
     }
-    if(!isFolder && !isMultiple){
-        let [bodyContent,contentType] = await createFormattedAPI(apisLocation, dataSourceLocation, false);
-        resp = await createOrUpdateApiInternal(curlUrl, token, bodyContent, "POST", contentType)
-        if (resp.status === 409){
+    if (!isFolder && !isMultiple) {
+        let [ bodyContent, contentType ] = await createFormattedAPI(apisLocation, dataSourceLocation, false);
+        resp = await createOrUpdateApiInternal(curlUrl, token, bodyContent, 'POST', contentType);
+        if (resp.status === 409) {
             var uuid = resp.message[0].match(/\w{8}-\w{4}-\w{4}-\w{4}-\w{12}/);
-            resp = await createOrUpdateApiInternal(curlUrl+"/"+uuid, token, bodyContent, "PATCH", contentType)
+            resp = await createOrUpdateApiInternal(curlUrl + '/' + uuid, token, bodyContent, 'PATCH', contentType);
         }
-    } else if(isFolder || isMultiple){
+    } else if (isFolder || isMultiple) {
         await zipDirectory(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple);
         const formData = new FormData();
         // let data = await axios.toFormData({'zip':fs.createReadStream('myfile.zip')},form);
-        formData.append('zip', fs.createReadStream(workspacePath+'/'+outputFile), { 
+        formData.append('zip', fs.createReadStream(workspacePath + '/' + outputFile), {
             name: outputFile,
             contentType: 'application/zip'
-         });
-        resp = await createOrUpdateApiInternal(curlUrl + "/bulk", token, formData, "POST", "multipart/form-data");
+        });
+        resp = await createOrUpdateApiInternal(curlUrl + '/bulk', token, formData, 'POST', 'multipart/form-data');
         fs.unlink(outputFile, (err) => {
             if (err) {
                 throw err;
-            }        
+            }
         });
     }
-    if(resp.status === 200 || resp.status === 201){
-        stateUpdateContent = JSON.stringify({"state":"enabled","message":""});
+    if (resp.status === 200 || resp.status === 201) {
+        stateUpdateContent = JSON.stringify({ state: 'enabled', message: '' });
     } else {
-        stateUpdateContent = JSON.stringify({"state":"unhealthy","message":resp.message.message});
+        stateUpdateContent = JSON.stringify({ state: 'unhealthy', message: resp.message.message });
     }
-    datasourceStateUpdate(apihost,stateUpdateContent,token,porg,dataSourceLocation);
+    datasourceStateUpdate(apihost, stateUpdateContent, token, porg, dataSourceLocation);
     return resp;
 
-}
+};
 
-let zipDirectory = async function (dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple){
-    if(isFolder){
-        for(let folder of apisArray){
-            const fileList = fs.readdirSync(workspacePath + "/" + folder.trim());
-            for(let element of fileList){
-                await createFormattedAPI(workspacePath + "/" + folder.trim() + "/" + element, dataSourceLocation, true);
+let zipDirectory = async function(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple) {
+    if (isFolder) {
+        for (let folder of apisArray) {
+            const fileList = fs.readdirSync(workspacePath + '/' + folder.trim());
+            for (let element of fileList) {
+                await createFormattedAPI(workspacePath + '/' + folder.trim() + '/' + element, dataSourceLocation, true);
             }
         }
-    } else if(isMultiple){
-        for(let element of apisArray){
-            await createFormattedAPI(workspacePath + "/" + element.trim(), dataSourceLocation, true);
+    } else if (isMultiple) {
+        for (let element of apisArray) {
+            await createFormattedAPI(workspacePath + '/' + element.trim(), dataSourceLocation, true);
         }
     }
     await zip.writeZip(outputFile);
-}
+};
 
-let createFormattedAPI = async function (apisLocation, dataSourceLocation, isAddFilesToZip){
-    let bodyContent, contentType;
+let createFormattedAPI = async function(apisLocation, dataSourceLocation, isAddFilesToZip) {
+    let bodyContent; let contentType;
     const fileExtension = path.extname(apisLocation);
-    let stringContent = fs.readFileSync(path.resolve(apisLocation),'utf8');
-    if(fileExtension === '.json'){
-        bodyContent = JSON.stringify({"api": JSON.parse(stringContent), "original_format": "json", "data_source": {"source": dataSourceLocation, "collector_type": COLLECTOR_TYPE}})
+    let stringContent = fs.readFileSync(path.resolve(apisLocation), 'utf8');
+    if (fileExtension === '.json') {
+        bodyContent = JSON.stringify({ api: JSON.parse(stringContent), original_format: 'json', data_source: { source: dataSourceLocation, collector_type: COLLECTOR_TYPE } });
         contentType = 'application/json';
-    } else if(fileExtension === '.yaml' || fileExtension === '.yml'){
-        bodyContent = JSON.stringify({"api": yaml.load(stringContent), "original_format": "yaml", "data_source": {"source": dataSourceLocation, "collector_type": COLLECTOR_TYPE}})
+    } else if (fileExtension === '.yaml' || fileExtension === '.yml') {
+        bodyContent = JSON.stringify({ api: yaml.load(stringContent), original_format: 'yaml', data_source: { source: dataSourceLocation, collector_type: COLLECTOR_TYPE } });
         contentType = 'application/yaml';
     }
-    if(isAddFilesToZip){
-        await zip.addFile(apisLocation.split("/").pop(), bodyContent);
+    if (isAddFilesToZip) {
+        await zip.addFile(apisLocation.split('/').pop(), bodyContent);
         return;
-    } else{
-        return [bodyContent, contentType];
+    } else {
+        return [ bodyContent, contentType ];
     }
-}
+};
 
-let createOrUpdateApiInternal = async function (curlUrl, token, bodyContent, method, contentType) {
-    console.log("createOrUpdateApiInternal");
-    try{
+let createOrUpdateApiInternal = async function(curlUrl, token, bodyContent, method, contentType) {
+    console.log('createOrUpdateApiInternal');
+    try {
         const resp = await axios.post(curlUrl, bodyContent, {
             headers: {
-                "Authorization": "Bearer "+ token,
+                Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
                 'Content-Type': contentType,
-                responseType: 'text'  
+                responseType: 'text'
             }
         })
         .then(function(res) {
-            if(res.status === 201 || res.status === 200){
-                return {status:res.status, message: [`${method} operation on api has been successful`]}
+            if (res.status === 201 || res.status === 200) {
+                return { status: res.status, message: [ `${method} operation on api has been successful` ] };
             }
             return res.json();
-        })
-        return resp
-    } catch(err){
+        });
+        return resp;
+    } catch (err) {
         console.log(err);
-        return {status: 500, message: err}
+        return { status: 500, message: err };
     }
-}
+};
 
-let datasourceStateUpdate = async function(apihost,bodyContent,token, porg, dataSourceLocation){
-    try{
-        await axios.patch(`https://discovery-api.${apihost}/discovery/orgs/${porg}/data-sources/${encodeURIComponent(dataSourceLocation)}`, bodyContent,{
+let datasourceStateUpdate = async function(apihost, bodyContent, token, porg, dataSourceLocation) {
+    try {
+        await axios.patch(`https://discovery-api.${apihost}/discovery/orgs/${porg}/data-sources/${encodeURIComponent(dataSourceLocation)}`, bodyContent, {
             headers: {
-                "Authorization": "Bearer "+ token,
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-            } 
-        })
-    } catch(error){
-        console.log(error)
-        return {status: 500, message: error}
+                Authorization: 'Bearer ' + token,
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+    } catch (error) {
+        console.log(error);
+        return { status: 500, message: error };
     }
-}
-let checkAndRegisterDataSource = async function (apihost, token, porg, dataSourceLocation) {
+};
+let checkAndRegisterDataSource = async function(apihost, token, porg, dataSourceLocation) {
     // Use this function to perform the datasource registration. If the dataSource doesn't exist create it
     let resp;
     try {
         resp = await axios.get(`https://discovery-api.${apihost}/discovery/orgs/${porg}/data-sources/${encodeURIComponent(dataSourceLocation)}`, {
-        headers: {
-            "Authorization": "Bearer "+ token,
-            "Accept": "application/json",
-            "Content-Type": "application/json"
+            headers: {
+                Authorization: 'Bearer ' + token,
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
 
-        }
+            }
         });
-        if (resp.status === 404){
-            const bodyContent = JSON.stringify({"title": dataSourceLocation, "collector_type": COLLECTOR_TYPE})
-            resp = await axios.post(`https://discovery-api.${apihost}/discovery/orgs/${porg}/data-sources`, bodyContent,{
+        if (resp.status === 404) {
+            const bodyContent = JSON.stringify({ title: dataSourceLocation, collector_type: COLLECTOR_TYPE });
+            resp = await axios.post(`https://discovery-api.${apihost}/discovery/orgs/${porg}/data-sources`, bodyContent, {
                 headers: {
-                    "Authorization": "Bearer "+ token,
-                    "Accept": "application/json",
-                    "Content-Type": "application/json"
+                    Authorization: 'Bearer ' + token,
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json'
 
-                } 
-            })
+                }
+            });
         }
     } catch (error) {
-        console.log(error)
-        return {status: 500, message: error}
+        console.log(error);
+        return { status: 500, message: error };
     }
-    return resp
+    return resp;
 
-}
+};
 
-let getAuthToken = async function (apihost, apikey) {
+let getAuthToken = async function(apihost, apikey) {
 
-    var bodyContent=JSON.stringify({"grant_type":"api_key","api_key":apikey,"realm":"provider/default-idp-2"});
-    const token = await axios.post(`https://discovery-api.${apihost}/discovery/token`, bodyContent,{
+    var bodyContent = JSON.stringify({ grant_type: 'api_key', api_key: apikey, realm: 'provider/default-idp-2' });
+    const token = await axios.post(`https://discovery-api.${apihost}/discovery/token`, bodyContent, {
         headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
         }
     })
     .then(function(res) {
@@ -182,7 +184,7 @@ let getAuthToken = async function (apihost, apikey) {
     return token;
 };
 
-module.exports = { createOrUpdateDiscoveredApi }
+module.exports = { createOrUpdateDiscoveredApi };
 
 
 /***/ }),
@@ -17696,75 +17698,77 @@ module.exports = JSON.parse('{"application/1d-interleaved-parityfec":{"source":"
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+// This entry need to be wrapped in an IIFE because it need to be in strict mode.
 (() => {
+"use strict";
+
 const core = __nccwpck_require__(2186);
 const { createOrUpdateDiscoveredApi } = __nccwpck_require__(607);
 
 
 // most @actions toolkit packages have async methods
 async function run() {
-  try {
-    let isFolder = false;
-    const githubServer = new URL(process.env['GITHUB_SERVER_URL']).hostname;
-    const repoLocation = process.env['GITHUB_REPOSITORY'];
-    const workspacePath = process.env['GITHUB_WORKSPACE'];
-    const apihost = core.getInput('api_host');
-    const apikey = core.getInput('api_key');
-    const porg = core.getInput('provider_org');
-    const datasourceCheck = core.getInput('resync_check');
-    const apisLocation = core.getInput('api_files') || core.getInput('api_folders');
-    const filesChanged = core.getInput('git_diff');
- 
-    if(core.getInput('api_files')){
-      isFolder = false;
-    } else if(core.getInput('api_folders')){
-      isFolder = true;
-    }
-    if(filesChanged.trim() && apisLocation){
-      let checkChanges = false;
-      let filesArray = filesChanged.split(" ");
-      let apisLocationArray = apisLocation.split(",");
-      if(isFolder){
-        for(let name of apisLocationArray){
-          checkChanges = filesArray.find(file => file.includes(name.trim())) || checkChanges;
+    try {
+        let isFolder = false;
+        const githubServer = new URL(process.env['GITHUB_SERVER_URL']).hostname;
+        const repoLocation = process.env['GITHUB_REPOSITORY'];
+        const workspacePath = process.env['GITHUB_WORKSPACE'];
+        const apihost = core.getInput('api_host');
+        const apikey = core.getInput('api_key');
+        const porg = core.getInput('provider_org');
+        const datasourceCheck = core.getInput('resync_check');
+        const apisLocation = core.getInput('api_files') || core.getInput('api_folders');
+        const filesChanged = core.getInput('git_diff');
+
+        if (core.getInput('api_files')) {
+            isFolder = false;
+        } else if (core.getInput('api_folders')) {
+            isFolder = true;
         }
-      } else {
-        for(let name of apisLocationArray){
-          checkChanges = filesArray.includes(name.trim()) || checkChanges;
+        if (filesChanged.trim() && apisLocation) {
+            let checkChanges = false;
+            let filesArray = filesChanged.split(' ');
+            let apisLocationArray = apisLocation.split(',');
+            if (isFolder) {
+                for (let name of apisLocationArray) {
+                    checkChanges = filesArray.find(file => file.includes(name.trim())) || checkChanges;
+                }
+            } else {
+                for (let name of apisLocationArray) {
+                    checkChanges = filesArray.includes(name.trim()) || checkChanges;
+                }
+            }
+            if (checkChanges) {
+                await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
+            } else {
+                core.setOutput('action-result', 'No files changed from the previous commit to send to Discovery Service');
+            }
+        } else {
+            await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
         }
-      }
-      if(checkChanges){
-        await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
-      } else {
-        core.setOutput('action-result', "No files changed from the previous commit to send to Discovery Service");
-      }
-    } else {
-      await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
+    } catch (error) {
+        core.setFailed(error.message);
     }
-  } catch (error) {
-    core.setFailed(error.message);
-  }
 }
 
-async function execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation){
-  try{
-    core.info(`apihost ${apihost}`);
-    core.info(`porg ${porg}`);
-    isFolder && core.info(`apifolders ${apisLocation}`) || core.info(`apifiles ${apisLocation}`);
-    core.info(`datasourceCheck ${datasourceCheck}`);
+async function execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation) {
+    try {
+        core.info(`apihost ${apihost}`);
+        core.info(`porg ${porg}`);
+        isFolder && core.info(`apifolders ${apisLocation}`) || core.info(`apifiles ${apisLocation}`);
+        core.info(`datasourceCheck ${datasourceCheck}`);
 
-    var resp = await createOrUpdateDiscoveredApi(workspacePath, apihost, apikey, porg, apisLocation, githubServer+"/"+repoLocation, datasourceCheck, isFolder);
-    core.info(`response: status: ${resp.status}, message: ${resp.message[0]}`);
+        var resp = await createOrUpdateDiscoveredApi(workspacePath, apihost, apikey, porg, apisLocation, githubServer + '/' + repoLocation, datasourceCheck, isFolder);
+        core.info(`response: status: ${resp.status}, message: ${resp.message[0]}`);
 
-    core.setOutput('action-result', `response: status: ${resp.status}, message: ${resp.message[0]}`);
+        core.setOutput('action-result', `response: status: ${resp.status}, message: ${resp.message[0]}`);
 
-    if (![200, 201, 304].includes(resp.status)){
-      core.setFailed(resp.message[0]);
+        if (![ 200, 201, 304 ].includes(resp.status)) {
+            core.setFailed(resp.message[0]);
+        }
+    } catch (error) {
+        core.setFailed(error.message);
     }
-  } catch (error) {
-    core.setFailed(error.message);
-  }
 }
 
 run();
