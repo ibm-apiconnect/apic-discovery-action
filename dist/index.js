@@ -14,7 +14,7 @@ const axios = __nccwpck_require__(8757);
 const AdmZip = __nccwpck_require__(6761);
 
 const COLLECTOR_TYPE = 'github';
-// process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+// process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const zip = new AdmZip();
 const outputFile = 'multipleAPIfiles.zip';
 

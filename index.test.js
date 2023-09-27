@@ -14,12 +14,12 @@ test('test runs', () => {
     process.env['INPUT_API_HOST'] = 'd-h01.apiconnect.dev.automation.ibm.com';
     process.env['INPUT_API_KEY'] = '';
     process.env['INPUT_PROVIDER_ORG'] = 'ruairi_h01_b';
-    // process.env['INPUT_GIT_DIFF'] = "APIfolder/gmail-api.json mit-api.json new-api.yaml";
+    // process.env['INPUT_GIT_DIFF'] = 'APIfolder/gmail-api.json mit-api.json new-api.yaml';
 
     process.env['INPUT_API_FILES'] = [ 'APIfolder/gmail-api.json', 'APIfiles/mit-api.json' ];
-    // process.env['INPUT_API_FILES'] = ["gmail-api-2.json"];
-    // process.env['INPUT_API_FOLDERS'] = ["APIfiles"];
-    // process.env['INPUT_API_FOLDERS'] = ["APIfiles","APIfolder"];
+    // process.env['INPUT_API_FILES'] = [ 'gmail-api-2.json' ];
+    // process.env['INPUT_API_FOLDERS'] = [ 'APIfiles' ];
+    // process.env['INPUT_API_FOLDERS'] = [ 'APIfiles', 'APIfolder' ];
     process.env['INPUT_RESYNC_CHECK'] = true;
 
     const ip = path.join(__dirname, 'index.js');
