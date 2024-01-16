@@ -14,6 +14,7 @@ const axios = __nccwpck_require__(8757);
 const AdmZip = __nccwpck_require__(6761);
 
 const COLLECTOR_TYPE = 'github';
+const RECORD_API_VERSION = '1.0';
 // process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const zip = new AdmZip();
 const outputFile = 'multipleAPIfiles.zip';
@@ -108,6 +109,7 @@ let createOrUpdateApiInternal = async function(curlUrl, token, bodyContent, meth
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
                 'Content-Type': contentType,
+                'Record-Api-Version': RECORD_API_VERSION,
                 responseType: 'text'
             }
         })
