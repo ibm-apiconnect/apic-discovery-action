@@ -102,7 +102,7 @@ let createOrUpdateApiInternal = async function(curlUrl, token, bodyContent, meth
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
                 'Content-Type': contentType,
-                'Record-Api-Version': RECORD_API_VERSION,
+                'x-ibm-record-api-version': RECORD_API_VERSION,
                 responseType: 'text'
             }
         })
