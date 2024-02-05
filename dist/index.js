@@ -17714,7 +17714,7 @@ async function run() {
         const githubServer = new URL(process.env['GITHUB_SERVER_URL']).hostname;
         const repoLocation = process.env['GITHUB_REPOSITORY'];
         const workspacePath = process.env['GITHUB_WORKSPACE'];
-        const apihost = core.getInput('api_host');
+        const apihost = core.getInput('api-host');
         const apikey = core.getInput('api_key');
         const porg = core.getInput('provider_org');
         const datasourceCheck = core.getInput('resync_check');
