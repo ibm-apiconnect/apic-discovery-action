@@ -121,7 +121,8 @@ let createOrUpdateApiInternal = async function(curlUrl, token, bodyContent, meth
 
 let datasourceStateUpdate = async function(apihost, bodyContent, token, porg, dataSourceLocation) {
     try {
-        await axios.patch(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources/${encodeURIComponent(dataSourceLocation)}`, bodyContent, {
+        dataSourceLocation = dataSourceLocation.replaceAll('/', '-');
+        await axios.patch(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, bodyContent, {
             headers: {
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
@@ -137,30 +138,28 @@ let checkAndRegisterDataSource = async function(apihost, token, porg, dataSource
     // Use this function to perform the datasource registration. If the dataSource doesn't exist create it
     let resp;
     try {
-        resp = await axios.get(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources/${encodeURIComponent(dataSourceLocation)}`, {
+        dataSourceLocation = dataSourceLocation.replaceAll('/', '-');
+        resp = await axios.get(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, {
             headers: {
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
                 'Content-Type': 'application/json'
-
+            }
+        }).then(response => {
+            if (response.data.status === 404) {
+                const bodyContent = JSON.stringify({ title: dataSourceLocation, collector_type: COLLECTOR_TYPE });
+                resp = axios.post(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources`, bodyContent, {
+                    headers: {
+                        Authorization: 'Bearer ' + token,
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
             }
         });
-        if (resp.status === 404) {
-            const bodyContent = JSON.stringify({ title: dataSourceLocation, collector_type: COLLECTOR_TYPE });
-            resp = await axios.post(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources`, bodyContent, {
-                headers: {
-                    Authorization: 'Bearer ' + token,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json'
-
-                }
-            });
-        }
     } catch (error) {
-        console.log(error);
         return { status: 500, message: error };
     }
-    return resp;
 
 };
 
