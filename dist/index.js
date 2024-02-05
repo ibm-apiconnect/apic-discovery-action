@@ -17715,10 +17715,10 @@ async function run() {
         const repoLocation = process.env['GITHUB_REPOSITORY'];
         const workspacePath = process.env['GITHUB_WORKSPACE'];
         const apihost = core.getInput('api-host');
-        const apikey = core.getInput('api_key');
-        const porg = core.getInput('provider_org');
+        const apikey = core.getInput('api-key');
+        const porg = core.getInput('provider-org');
         const datasourceCheck = core.getInput('resync_check');
-        const apisLocation = core.getInput('api_files') || core.getInput('api_folders');
+        const apisLocation = core.getInput('api-files') || core.getInput('api-folders');
         const filesChanged = core.getInput('git_diff');
 
         if (core.getInput('api_files')) {
