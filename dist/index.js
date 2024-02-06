@@ -17721,9 +17721,9 @@ async function run() {
         const apisLocation = core.getInput('api-files') || core.getInput('api-folders');
         const filesChanged = core.getInput('git_diff');
 
-        if (core.getInput('api_files')) {
+        if (core.getInput('api-files')) {
             isFolder = false;
-        } else if (core.getInput('api_folders')) {
+        } else if (core.getInput('api-folders')) {
             isFolder = true;
         }
         if (filesChanged.trim() && apisLocation) {
