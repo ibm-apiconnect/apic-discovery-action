@@ -23,6 +23,9 @@ test('test runs', () => {
     process.env['INPUT_RESYNC_CHECK'] = true;
 
     const ip = path.join(__dirname, 'index.js');
+    console.log(process.env);
+    const resultOne = cp.execSync(`cat ${ip}`).toString();
+    console.log(resultOne);
     const result = cp.execSync(`node ${ip}`, { env: process.env }).toString();
     console.log(result);
 });
