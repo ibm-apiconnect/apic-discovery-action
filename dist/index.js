@@ -17712,8 +17712,14 @@ async function run() {
     try {
         let isFolder = false;
         const githubServer = new URL(process.env['GITHUB_SERVER_URL']).hostname;
+        console.log(githubServer);
         const repoLocation = process.env['GITHUB_REPOSITORY'];
         const workspacePath = process.env['GITHUB_WORKSPACE'];
+        console.log(core.getInput('api-host'));
+        console.log(core.getInput('api-key'));
+        console.log(core.getInput('provider-org'));
+        console.log(core.getInput('api-files'));
+        console.log(core.getInput('api-folders'));
         const apihost = core.getInput('api-host');
         const apikey = core.getInput('api-key');
         const porg = core.getInput('provider-org');
