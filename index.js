@@ -11,15 +11,15 @@ async function run() {
         console.log(githubServer);
         const repoLocation = process.env['GITHUB_REPOSITORY'];
         const workspacePath = process.env['GITHUB_WORKSPACE'];
-        const apihost = core.getInput('apihost');
-        const apikey = core.getInput('apikey');
-        const porg = core.getInput('providerorg');
+        const apihost = core.getInput('api_host');
+        const apikey = core.getInput('api_key');
+        const porg = core.getInput('provider_org');
         const datasourceCheck = core.getInput('resync_check');
-        const apisLocation = core.getInput('apifiles') || core.getInput('apifolders');
+        const apisLocation = core.getInput('api_files') || core.getInput('api_folders');
         const filesChanged = core.getInput('git_diff');
-        if (core.getInput('apifiles')) {
+        if (core.getInput('api_files')) {
             isFolder = false;
-        } else if (core.getInput('apifolders')) {
+        } else if (core.getInput('api_folders')) {
             isFolder = true;
         }
         if (filesChanged.trim() && apisLocation) {
