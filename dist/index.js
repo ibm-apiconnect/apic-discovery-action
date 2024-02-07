@@ -17712,7 +17712,6 @@ async function run() {
     try {
         let isFolder = false;
         const githubServer = new URL(process.env['GITHUB_SERVER_URL']).hostname;
-        console.log(githubServer);
         const repoLocation = process.env['GITHUB_REPOSITORY'];
         const workspacePath = process.env['GITHUB_WORKSPACE'];
         const apihost = core.getInput('api_host');
@@ -17721,6 +17720,7 @@ async function run() {
         const datasourceCheck = core.getInput('resync_check');
         const apisLocation = core.getInput('api_files') || core.getInput('api_folders');
         const filesChanged = core.getInput('git_diff');
+
         if (core.getInput('api_files')) {
             isFolder = false;
         } else if (core.getInput('api_folders')) {
