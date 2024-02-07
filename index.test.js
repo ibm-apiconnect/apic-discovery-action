@@ -11,9 +11,9 @@ test('test runs', () => {
     process.env['GITHUB_REPOSITORY'] = 'ru2-apic-discovery-action';
     process.env['GITHUB_WORKSPACE'] = '/home/ruairi/git/misc/apic-discovery-action';
 
-    // process.env['INPUT_API-HOST'] = 'd-h01.apiconnect.dev.automation.ibm.com';
-    // process.env['INPUT_API-KEY'] = '';
-    // process.env['INPUT_PROVIDER-ORG'] = 'ruairi_h01_b';
+    process.env['INPUT_API-HOST'] = 'd-h01.apiconnect.dev.automation.ibm.com';
+    process.env['INPUT_API-KEY'] = '';
+    process.env['INPUT_PROVIDER-ORG'] = 'ruairi_h01_b';
     // process.env['INPUT_GIT_DIFF'] = 'APIfolder/gmail-api.json mit-api.json new-api.yaml';
 
     process.env['INPUT_API-FILES'] = [ 'APIfolder/gmail-api.json', 'APIfiles/mit-api.json' ];
@@ -23,9 +23,15 @@ test('test runs', () => {
     process.env['INPUT_RESYNC_CHECK'] = true;
 
     const ip = path.join(__dirname, 'index.js');
-    console.log(process.env);
     const resultOne = cp.execSync(`cat ${ip}`).toString();
-    console.log(resultOne);
-    const result = cp.execSync(`node ${ip}`, { env: process.env }).toString();
-    console.log(result);
+    try {
+        const resNpmVersion = cp.execSync('npm -v');
+        console.log('success', resNpmVersion.toString());
+        const result = cp.execSync(`node ${ip}`, { env: process.env }, { stdio: 'inherit' }).toString();
+        console.log(result);
+    } catch (error) {
+        console.log(error.message);
+        console.log('error', error.stdout.toString());
+    }
+
 });
