@@ -17715,11 +17715,6 @@ async function run() {
         console.log(githubServer);
         const repoLocation = process.env['GITHUB_REPOSITORY'];
         const workspacePath = process.env['GITHUB_WORKSPACE'];
-        console.log(core.getInput('apihost'));
-        console.log(core.getInput('apikey'));
-        console.log(core.getInput('providerorg'));
-        console.log(core.getInput('apifiles'));
-        console.log(core.getInput('apifolders'));
         const apihost = core.getInput('apihost');
         const apikey = core.getInput('apikey');
         const porg = core.getInput('providerorg');

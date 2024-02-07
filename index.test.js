@@ -23,16 +23,6 @@ test('test runs', () => {
     process.env['INPUT_RESYNC_CHECK'] = true;
 
     const ip = path.join(__dirname, 'index.js');
-    const resultOne = cp.execSync(`cat ${ip}`).toString();
-    try {
-        const resNpmVersion = cp.execSync('npm -v');
-        console.log('success', resNpmVersion.toString());
-        cp.execSync('npm install -g npm@9.5.1');
-        const result = cp.execSync(`node ${ip}`, { env: process.env }, { stdio: 'inherit' }).toString();
-        console.log(result);
-    } catch (error) {
-        console.log(error.message);
-        console.log('error', error.stdout.toString());
-    }
-
+    const result = cp.execSync(`node ${ip}`, { env: process.env }).toString();
+    console.log(result);
 });
