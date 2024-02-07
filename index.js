@@ -11,21 +11,20 @@ async function run() {
         console.log(githubServer);
         const repoLocation = process.env['GITHUB_REPOSITORY'];
         const workspacePath = process.env['GITHUB_WORKSPACE'];
-        console.log(core.getInput('api-host'));
-        console.log(core.getInput('api-key'));
-        console.log(core.getInput('provider-org'));
-        console.log(core.getInput('api-files'));
-        console.log(core.getInput('api-folders'));
-        const apihost = core.getInput('api-host');
-        const apikey = core.getInput('api-key');
-        const porg = core.getInput('provider-org');
+        console.log(core.getInput('apihost'));
+        console.log(core.getInput('apikey'));
+        console.log(core.getInput('providerorg'));
+        console.log(core.getInput('apifiles'));
+        console.log(core.getInput('apifolders'));
+        const apihost = core.getInput('apihost');
+        const apikey = core.getInput('apikey');
+        const porg = core.getInput('providerorg');
         const datasourceCheck = core.getInput('resync_check');
-        const apisLocation = core.getInput('api-files') || core.getInput('api-folders');
+        const apisLocation = core.getInput('apifiles') || core.getInput('apifolders');
         const filesChanged = core.getInput('git_diff');
-
-        if (core.getInput('api-files')) {
+        if (core.getInput('apifiles')) {
             isFolder = false;
-        } else if (core.getInput('api-folders')) {
+        } else if (core.getInput('apifolders')) {
             isFolder = true;
         }
         if (filesChanged.trim() && apisLocation) {

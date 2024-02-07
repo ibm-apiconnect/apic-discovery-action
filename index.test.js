@@ -11,12 +11,12 @@ test('test runs', () => {
     process.env['GITHUB_REPOSITORY'] = 'ru2-apic-discovery-action';
     process.env['GITHUB_WORKSPACE'] = '/home/ruairi/git/misc/apic-discovery-action';
 
-    process.env['INPUT_API-HOST'] = 'd-h01.apiconnect.dev.automation.ibm.com';
-    process.env['INPUT_API-KEY'] = '';
-    process.env['INPUT_PROVIDER-ORG'] = 'ruairi_h01_b';
+    process.env['INPUT_APIHOST'] = 'd-h01.apiconnect.dev.automation.ibm.com';
+    process.env['INPUT_APIKEY'] = '';
+    process.env['INPUT_PROVIDERORG'] = 'ruairi_h01_b';
     // process.env['INPUT_GIT_DIFF'] = 'APIfolder/gmail-api.json mit-api.json new-api.yaml';
 
-    process.env['INPUT_API-FILES'] = [ 'APIfolder/gmail-api.json', 'APIfiles/mit-api.json' ];
+    process.env['INPUT_APIFILES'] = [ 'APIfolder/gmail-api.json', 'APIfiles/mit-api.json' ];
     // process.env['INPUT_API-FILES'] = [ 'gmail-api-2.json' ];
     // process.env['INPUT_API-FOLDERS'] = [ 'APIfiles' ];
     // process.env['INPUT_API-FOLDERS'] = [ 'APIfiles', 'APIfolder' ];
