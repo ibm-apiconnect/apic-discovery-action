@@ -8,7 +8,7 @@ const AdmZip = require('adm-zip');
 
 const COLLECTOR_TYPE = 'github';
 const RECORD_API_VERSION = '1.0';
-// process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const zip = new AdmZip();
 const outputFile = 'multipleAPIfiles.zip';
 
@@ -19,7 +19,7 @@ let createOrUpdateDiscoveredApi = async function(workspacePath, apihost, apikey,
     const apisArray = apisLocation.split(',');
     const isMultiple = apisArray.length > 1;
     let resp; let stateUpdateContent;
-    let curlUrl = `https://platform-api.${apihost}/discovery/orgs/${porg}/discovered-apis`;
+    let curlUrl = `https://api.${apihost}/discovery/orgs/${porg}/discovered-apis`;
     if (!apikey) {
         return { status: 304, message: [ 'Warning: create Or Update Discovered Api not run as apikey is missing' ] };
     }
@@ -122,7 +122,7 @@ let createOrUpdateApiInternal = async function(curlUrl, token, bodyContent, meth
 let datasourceStateUpdate = async function(apihost, bodyContent, token, porg, dataSourceLocation) {
     try {
         dataSourceLocation = dataSourceLocation.replaceAll('/', '-');
-        await axios.patch(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, bodyContent, {
+        await axios.patch(`https://api.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, bodyContent, {
             headers: {
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
@@ -139,7 +139,7 @@ let checkAndRegisterDataSource = async function(apihost, token, porg, dataSource
     let resp;
     try {
         dataSourceLocation = dataSourceLocation.replaceAll('/', '-');
-        resp = await axios.get(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, {
+        resp = await axios.get(`https://api.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, {
             headers: {
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
@@ -148,7 +148,7 @@ let checkAndRegisterDataSource = async function(apihost, token, porg, dataSource
         }).then(response => {
             if (response.data.status === 404) {
                 const bodyContent = JSON.stringify({ title: dataSourceLocation, collector_type: COLLECTOR_TYPE });
-                resp = axios.post(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources`, bodyContent, {
+                resp = axios.post(`https://api.${apihost}/discovery/orgs/${porg}/data-sources`, bodyContent, {
                     headers: {
                         Authorization: 'Bearer ' + token,
                         Accept: 'application/json',
@@ -166,7 +166,7 @@ let checkAndRegisterDataSource = async function(apihost, token, porg, dataSource
 let getAuthToken = async function(apihost, apikey) {
 
     var bodyContent = JSON.stringify({ grant_type: 'api_key', api_key: apikey, realm: 'provider/default-idp-2' });
-    const token = await axios.post(`https://platform-api.${apihost}/discovery/token`, bodyContent, {
+    const token = await axios.post(`https://api.${apihost}/discovery/token`, bodyContent, {
         headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json'
