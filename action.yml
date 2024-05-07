@@ -27,5 +27,5 @@ outputs:
   action-result:
     description: 'Result of operation to add apis to apiconnect discovery repo'  
 runs:
-  using: 'node16'
+  using: 'node20'
   main: 'dist/index.js'
