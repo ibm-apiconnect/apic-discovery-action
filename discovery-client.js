@@ -28,37 +28,46 @@ let createOrUpdateDiscoveredApi = async function(workspacePath, apihost, apikey,
         await checkAndRegisterDataSource(apihost, token, porg, dataSourceLocation);
     }
     if (!isFolder && !isMultiple) {
-        let [ bodyContent, contentType ] = await createFormattedAPI(apisLocation, dataSourceLocation, false);
-        resp = await createOrUpdateApiInternal(curlUrl, token, bodyContent, 'POST', contentType);
-        if (resp.status === 409) {
-            var uuid = resp.message[0].match(/\w{8}-\w{4}-\w{4}-\w{4}-\w{12}/);
-            resp = await createOrUpdateApiInternal(curlUrl + '/' + uuid, token, bodyContent, 'PATCH', contentType);
+        let stats = fs.statSync(path.resolve(apisLocation));
+        if (stats.size > 1048576) {
+            resp = await sendBulkAPI(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple, curlUrl, token);
+        } else {
+            let [ bodyContent, contentType ] = await createFormattedAPI(apisLocation, dataSourceLocation, false);
+            resp = await createOrUpdateApiInternal(curlUrl, token, bodyContent, 'POST', contentType);
+            if (resp.status === 409) {
+                var uuid = resp.message[0].match(/\w{8}-\w{4}-\w{4}-\w{4}-\w{12}/);
+                resp = await createOrUpdateApiInternal(curlUrl + '/' + uuid, token, bodyContent, 'PATCH', contentType);
+            }
         }
     } else if (isFolder || isMultiple) {
-        await zipDirectory(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple);
-        const formData = new FormData();
-        // let data = await axios.toFormData({'zip':fs.createReadStream('myfile.zip')},form);
-        formData.append('zip', fs.createReadStream(workspacePath + '/' + outputFile), {
-            name: outputFile,
-            contentType: 'application/zip'
-        });
-        resp = await createOrUpdateApiInternal(curlUrl + '/bulk', token, formData, 'POST', 'multipart/form-data');
-        fs.unlink(outputFile, (err) => {
-            if (err) {
-                throw err;
-            }
-        });
+        resp = await sendBulkAPI(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple, curlUrl, token);
     }
-    if (resp.status === 200 || resp.status === 201) {
-        stateUpdateContent = JSON.stringify({ state: 'enabled', message: '' });
-    } else {
+
+    if (resp.status !== 200 && resp.status !== 201) {
         stateUpdateContent = JSON.stringify({ state: 'unhealthy', message: resp.message.message });
+        datasourceStateUpdate(apihost, stateUpdateContent, token, porg, dataSourceLocation);
     }
-    datasourceStateUpdate(apihost, stateUpdateContent, token, porg, dataSourceLocation);
     return resp;
 
 };
 
+let sendBulkAPI = async function(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple, curlUrl, token) {
+    let resp;
+    await zipDirectory(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple);
+    const formData = new FormData();
+    // let data = await axios.toFormData({'zip':fs.createReadStream('myfile.zip')},form);
+    formData.append('zip', fs.createReadStream(workspacePath + '/' + outputFile), {
+        name: outputFile,
+        contentType: 'application/zip'
+    });
+    resp = await createOrUpdateApiInternal(curlUrl + '/bulk', token, formData, 'POST', 'multipart/form-data');
+    fs.unlink(outputFile, (err) => {
+        if (err) {
+            throw err;
+        }
+    });
+    return resp;
+};
 let zipDirectory = async function(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple) {
     if (isFolder) {
         for (let folder of apisArray) {
@@ -71,6 +80,8 @@ let zipDirectory = async function(dataSourceLocation, workspacePath, apisArray, 
         for (let element of apisArray) {
             await createFormattedAPI(workspacePath + '/' + element.trim(), dataSourceLocation, true);
         }
+    } else {
+        await createFormattedAPI(workspacePath + '/' + apisArray[0].trim(), dataSourceLocation, true);
     }
     await zip.writeZip(outputFile);
 };
@@ -120,13 +131,18 @@ let createOrUpdateApiInternal = async function(curlUrl, token, bodyContent, meth
 };
 
 let datasourceStateUpdate = async function(apihost, bodyContent, token, porg, dataSourceLocation) {
+    let resp;
     try {
         dataSourceLocation = dataSourceLocation.replaceAll('/', '-');
-        await axios.patch(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, bodyContent, {
+        resp = await axios.patch(`https://platform-api.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, bodyContent, {
             headers: {
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
                 'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.data.status === 404) {
+                return;
             }
         });
     } catch (error) {
