@@ -13,6 +13,7 @@ See [action.yml](action.yml)
 The following parameters are always required:
 
  - API_HOST - Domain name of the ApiConnect instance where discovered APIs will be sent.<br /> &nbsp; Example : `us-east.apiconnect.automation.ibm.com`
+ - PLATFORM_API_PREFIX - Platform API prefix have a default value of `platform-api` as same as for ApiConnect on Cloud. It can be changed to the env prefix
  - PROVIDER_ORG - The provider org name of the apiconnect manager 
  - API_FILES - One or more file names of the APIs to sync with apiconnect discovery repo separated by comma.<br /> &nbsp; Example : `gmail-api.json,gmail-api.yaml,mit-api.json,APIfolder/petstore-exp.json`
  - API_FOLDERS - One or more folder names containing APIs to sync with apiconnect discovery repo separated by comma. <br /> &nbsp; Example : `APIFiles,APIFolders`
@@ -38,6 +39,7 @@ on: [pull_request, workflow_dispatch, push]
 
 env:
   API_HOST: <host-name>
+  PLATFORM_API_PREFIX: <platform-api-prefix>
   PROVIDER_ORG: <porg-name>
   API_FILES: <file/files name>
 
@@ -54,6 +56,7 @@ jobs:
       id: discover-apis
       with:
         api_host: ${{ env.API_HOST }}
+        platform_api_prefix: ${{ env.PLATFORM_API_PREFIX }}
         provider_org: ${{ env.PROVIDER_ORG }}
         api_key: ${{ secrets.apicApikey }}
         if: env.API_FILES
@@ -80,6 +83,7 @@ on: [pull_request, workflow_dispatch, push]
 
 env:
   API_HOST: <host-name>
+  PLATFORM_API_PREFIX: <platform-api-prefix>
   PROVIDER_ORG: <porg-name>
   API_FILES: <file/files name>
 
@@ -119,6 +123,7 @@ jobs:
       id: discover-apis
       with:
         api_host: ${{ env.API_HOST }}
+        platform_api_prefix: ${{ env.PLATFORM_API_PREFIX }}
         provider_org: ${{ env.PROVIDER_ORG }}
         api_key: ${{ secrets.apicApikey }}
         if: env.API_FILES
