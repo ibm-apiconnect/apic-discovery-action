@@ -4,6 +4,9 @@ inputs:
   api_host:
     description: 'Domain name of the ApiConnect instance where discovered APIs will be sent'
     required: true
+  platform_api_prefix:
+    description: 'Platform API Prefix'
+    required: false
   api_key:
     description: 'APIC API key'
     required: false
