@@ -13,7 +13,7 @@ See [action.yml](action.yml)
 The following parameters are always required:
 
  - API_HOST - Domain name of the ApiConnect instance where discovered APIs will be sent.<br /> &nbsp; Example : `us-east.apiconnect.automation.ibm.com`
- - PLATFORM_API_PREFIX - Platform API prefix have a default value of `platform-api` as same as for ApiConnect on Cloud. It can be changed to the env prefix
+ - PLATFORM_API_PREFIX - Platform API prefix has a default value of `platform-api` which is the same as the prefix value for ApiConnect on Cloud. It can be changed to match your systems set up if different from the default
  - PROVIDER_ORG - The provider org name of the apiconnect manager 
  - API_FILES - One or more file names of the APIs to sync with apiconnect discovery repo separated by comma.<br /> &nbsp; Example : `gmail-api.json,gmail-api.yaml,mit-api.json,APIfolder/petstore-exp.json`
  - API_FOLDERS - One or more folder names containing APIs to sync with apiconnect discovery repo separated by comma. <br /> &nbsp; Example : `APIFiles,APIFolders`
