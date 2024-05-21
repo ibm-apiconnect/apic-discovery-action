@@ -17,6 +17,8 @@ async function run() {
         const apisLocation = core.getInput('api_files') || core.getInput('api_folders');
         const filesChanged = core.getInput('git_diff');
         const platformApiPrefix = core.getInput('platform_api_prefix') ? core.getInput('platform_api_prefix') : 'platform-api';
+        core.info(`porg ${porg}`);
+        core.info(`platformApiPrefix ${platformApiPrefix}`);
         if (core.getInput('api_files')) {
             isFolder = false;
         } else if (core.getInput('api_folders')) {
