@@ -43,7 +43,7 @@ async function run() {
                 core.setOutput('action-result', 'No files changed from the previous commit to send to Discovery Service');
             }
         } else {
-            await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
+            await execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
         }
     } catch (error) {
         core.setFailed(error.message);
