@@ -52,6 +52,7 @@ async function execution(apihost, platformApiPrefix, porg, isFolder, apisLocatio
     try {
         core.info(`apihost ${apihost}`);
         core.info(`porg ${porg}`);
+        core.info(`platformApiPrefix ${platformApiPrefix}`);
         isFolder && core.info(`apifolders ${apisLocation}`) || core.info(`apifiles ${apisLocation}`);
         core.info(`datasourceCheck ${datasourceCheck}`);
 
