@@ -17,6 +17,7 @@ async function run() {
         const apisLocation = core.getInput('api_files') || core.getInput('api_folders');
         const filesChanged = core.getInput('git_diff');
         const platformApiPrefix = core.getInput('platform_api_prefix') ? core.getInput('platform_api_prefix') : 'platform-api';
+        const nodeTlsRejectUnauthorized = (core.getInput('insecure_skip_tls_verify').toLowerCase() === 'true');
         if (core.getInput('api_files')) {
             isFolder = false;
         } else if (core.getInput('api_folders')) {
@@ -36,26 +37,26 @@ async function run() {
                 }
             }
             if (checkChanges) {
-                await execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
+                await execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized);
             } else {
                 core.setOutput('action-result', 'No files changed from the previous commit to send to Discovery Service');
             }
         } else {
-            await execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
+            await execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized);
         }
     } catch (error) {
         core.setFailed(error.message);
     }
 }
 
-async function execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation) {
+async function execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized) {
     try {
         core.info(`apihost ${apihost}`);
         core.info(`porg ${porg}`);
         isFolder && core.info(`apifolders ${apisLocation}`) || core.info(`apifiles ${apisLocation}`);
         core.info(`datasourceCheck ${datasourceCheck}`);
-
-        var resp = await createOrUpdateDiscoveredApi(workspacePath, apihost, platformApiPrefix, apikey, porg, apisLocation, githubServer + '/' + repoLocation, datasourceCheck, isFolder);
+        var resp = await createOrUpdateDiscoveredApi(workspacePath, apihost, platformApiPrefix, apikey, porg, apisLocation, githubServer + '/' + repoLocation, datasourceCheck, isFolder, nodeTlsRejectUnauthorized);
+        core.info(resp);
         core.info(`response: status: ${resp.status}, message: ${resp.message[0]}`);
 
         core.setOutput('action-result', `response: status: ${resp.status}, message: ${resp.message[0]}`);

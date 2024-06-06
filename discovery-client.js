@@ -12,7 +12,10 @@ const RECORD_API_VERSION = '1.0';
 const zip = new AdmZip();
 const outputFile = 'multipleAPIfiles.zip';
 
-let createOrUpdateDiscoveredApi = async function(workspacePath, apihost, platformApiPrefix, apikey, porg, apisLocation, dataSourceLocation, dataSourceCheck, isFolder) {
+let createOrUpdateDiscoveredApi = async function(workspacePath, apihost, platformApiPrefix, apikey, porg, apisLocation, dataSourceLocation, dataSourceCheck, isFolder, nodeTlsRejectUnauthorized) {
+    if (nodeTlsRejectUnauthorized) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    }
     if (!apisLocation) {
         return { status: 400, message: [ 'Error: create Or Update Discovered Api not run as API files or API folders parameter is missing or Empty' ] };
     }

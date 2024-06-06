@@ -22,6 +22,7 @@ test('test runs', () => {
     // process.env['INPUT_API_FOLDERS'] = [ 'APIfiles', 'APIfolder' ];
     process.env['INPUT_RESYNC_CHECK'] = true;
     process.env['INPUT_PLATFORM_API_PREFIX'] = 'api';
+    process.env['INPUT_INSECURE_SKIP_TLS_VERIFY'] = true;
     const ip = path.join(__dirname, 'index.js');
     const result = cp.execSync(`node ${ip}`, { env: process.env }).toString();
     console.log(result);
