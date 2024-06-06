@@ -7,6 +7,9 @@ inputs:
   platform_api_prefix:
     description: 'Platform API Prefix'
     required: false
+  insecure_skip_tls_verify:
+    description: 'Insecure Skip TLS verify to allow self signed certs'
+    required: false
   api_key:
     description: 'APIC API key'
     required: false
