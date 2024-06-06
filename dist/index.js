@@ -17779,7 +17779,6 @@ async function execution(apihost, platformApiPrefix, porg, isFolder, apisLocatio
         isFolder && core.info(`apifolders ${apisLocation}`) || core.info(`apifiles ${apisLocation}`);
         core.info(`datasourceCheck ${datasourceCheck}`);
         var resp = await createOrUpdateDiscoveredApi(workspacePath, apihost, platformApiPrefix, apikey, porg, apisLocation, githubServer + '/' + repoLocation, datasourceCheck, isFolder, nodeTlsRejectUnauthorized);
-        core.info(resp);
         core.info(`response: status: ${resp.status}, message: ${resp.message[0]}`);
 
         core.setOutput('action-result', `response: status: ${resp.status}, message: ${resp.message[0]}`);
