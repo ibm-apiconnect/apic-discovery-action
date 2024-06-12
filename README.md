@@ -13,14 +13,14 @@ See [action.yml](action.yml)
 The following parameters are always required:
 
 - API_HOST - Domain name of the APIConnect instance where discovered APIs will be sent.<br /> &nbsp; Example : `us-east.apiconnect.automation.ibm.com`
- - PLATFORM_API_PREFIX - The Platform API prefix has a default value of `platform-api`, the same as the prefix value for APIConnect on Cloud. It can be changed to match your system setup if it is different from the default
+- PLATFORM_API_PREFIX - The Platform API prefix has a default value of `platform-api`, the same as the prefix value for APIConnect on Cloud. It can be changed to match your system setup if it is different from the default
 - INSECURE_SKIP_TLS_VERIFY - If set to true the action skips the validity check for the server's certificate. This may be required in the case where your APIConnect system is using self-signed certificates. Note: Setting this will make your HTTPS connections insecure.
- - PROVIDER_ORG - The provider org name of the APIConnect manager.
- - API_FILES - One or more file names of the APIs to sync with the APIConnect discovery repo separated by a comma.<br /> &nbsp; Example : `gmail-api.json,gmail-api.yaml,mit-api.json,APIfolder/petstore-exp.json`
- - API_FOLDERS - One or more folder names containing APIs to sync with the APIConnect discovery repo separated by a comma. <br /> &nbsp; Example: `APIFiles, APIFolders`
- - resync_check: Indicates if changes to the action like at initial creation should trigger an api-file sync.
- - git_diff: (Optional) Git diff between the current and the previous commit. If multiple files have changed in the commit, the workflow will run only if one of the files supplied in `API_FILES` or `API_FOLDERS` has changed.
- - apikey - An API Key can be obtained from the APIConnect manager for the user who has access to post the API.<br />
+- PROVIDER_ORG - The provider org name of the APIConnect manager.
+- API_FILES - One or more file names of the APIs to sync with the APIConnect discovery repo separated by a comma.<br /> &nbsp; Example : `gmail-api.json,gmail-api.yaml,mit-api.json,APIfolder/petstore-exp.json`
+- API_FOLDERS - One or more folder names containing APIs to sync with the APIConnect discovery repo separated by a comma. <br /> &nbsp; Example: `APIFiles, APIFolders`
+- resync_check: Indicates if changes to the action like at initial creation should trigger an api-file sync.
+- git_diff: (Optional) Git diff between the current and the previous commit. If multiple files have changed in the commit, the workflow will run only if one of the files supplied in `API_FILES` or `API_FOLDERS` has changed.
+- apikey - An API Key can be obtained from the APIConnect manager for the user who has access to post the API.<br />
 An API key can be created by logging into the APIConnect Manager UI and selecting the "My API Keys" option under the profile icon from the top navigation bar. It is good practice to store any sensitive data like the apikey as a GitHub action secret. See [here](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository) for more details. For the sample below the GitHub secret should be called `apicApikey` as it will need to match the following templated value  
 ${{ secrets.apicApikey }} 
 
