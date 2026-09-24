@@ -48,7 +48,7 @@ jobs:
   run-discovery:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Difference
       id: difference-output
       run: |
@@ -98,7 +98,7 @@ jobs:
       apifiles_env: ${{ steps.changed_filename.outputs.apifiles_env }}
       folder_changed: ${{ steps.check_apifolders_changed.outputs.folder_updates }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 2
     - name: Check Workflow changed
@@ -119,7 +119,7 @@ jobs:
     needs: [ check_changes_job ]
     if: ${{ (contains(needs.check_changes_job.outputs.apifiles_env,needs.check_changes_job.outputs.changed_filename)) || (needs.check_changes_job.outputs.action_changed) || (needs.check_changes_job.outputs.folder_changed) }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: ibm-apiconnect/apic-discovery-action@main
       id: discover-apis
       with:
