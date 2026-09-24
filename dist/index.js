@@ -14,57 +14,70 @@ const axios = __nccwpck_require__(8757);
 const AdmZip = __nccwpck_require__(6761);
 
 const COLLECTOR_TYPE = 'github';
+const RECORD_API_VERSION = '1.0';
 // process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const zip = new AdmZip();
 const outputFile = 'multipleAPIfiles.zip';
 
-let createOrUpdateDiscoveredApi = async function(workspacePath, apihost, apikey, porg, apisLocation, dataSourceLocation, dataSourceCheck, isFolder) {
+let createOrUpdateDiscoveredApi = async function(workspacePath, apihost, platformApiPrefix, apikey, porg, apisLocation, dataSourceLocation, dataSourceCheck, isFolder, nodeTlsRejectUnauthorized) {
+    if (nodeTlsRejectUnauthorized) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    }
     if (!apisLocation) {
         return { status: 400, message: [ 'Error: create Or Update Discovered Api not run as API files or API folders parameter is missing or Empty' ] };
     }
     const apisArray = apisLocation.split(',');
     const isMultiple = apisArray.length > 1;
     let resp; let stateUpdateContent;
-    let curlUrl = `https://platform-api.${apihost}/discovery/orgs/${porg}/discovered-apis`;
+    let curlUrl = `https://${platformApiPrefix}.${apihost}/discovery/orgs/${porg}/discovered-apis`;
     if (!apikey) {
         return { status: 304, message: [ 'Warning: create Or Update Discovered Api not run as apikey is missing' ] };
     }
-    var token = await getAuthToken(apihost, apikey);
+    var token = await getAuthToken(apihost, platformApiPrefix, apikey);
     if (dataSourceCheck) {
-        await checkAndRegisterDataSource(apihost, token, porg, dataSourceLocation);
+        await checkAndRegisterDataSource(apihost, platformApiPrefix, token, porg, dataSourceLocation);
     }
     if (!isFolder && !isMultiple) {
-        let [ bodyContent, contentType ] = await createFormattedAPI(apisLocation, dataSourceLocation, false);
-        resp = await createOrUpdateApiInternal(curlUrl, token, bodyContent, 'POST', contentType);
-        if (resp.status === 409) {
-            var uuid = resp.message[0].match(/\w{8}-\w{4}-\w{4}-\w{4}-\w{12}/);
-            resp = await createOrUpdateApiInternal(curlUrl + '/' + uuid, token, bodyContent, 'PATCH', contentType);
+        let stats = fs.statSync(path.resolve(apisLocation));
+        if (stats.size > 1048576) {
+            resp = await sendBulkAPI(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple, curlUrl, token);
+        } else {
+            let [ bodyContent, contentType ] = await createFormattedAPI(apisLocation, dataSourceLocation, false);
+            resp = await createOrUpdateApiInternal(curlUrl, token, bodyContent, 'POST', contentType);
+            if (resp.status === 409) {
+                var uuid = resp.message[0].match(/\w{8}-\w{4}-\w{4}-\w{4}-\w{12}/);
+                resp = await createOrUpdateApiInternal(curlUrl + '/' + uuid, token, bodyContent, 'PATCH', contentType);
+            }
         }
     } else if (isFolder || isMultiple) {
-        await zipDirectory(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple);
-        const formData = new FormData();
-        // let data = await axios.toFormData({'zip':fs.createReadStream('myfile.zip')},form);
-        formData.append('zip', fs.createReadStream(workspacePath + '/' + outputFile), {
-            name: outputFile,
-            contentType: 'application/zip'
-        });
-        resp = await createOrUpdateApiInternal(curlUrl + '/bulk', token, formData, 'POST', 'multipart/form-data');
-        fs.unlink(outputFile, (err) => {
-            if (err) {
-                throw err;
-            }
-        });
+        resp = await sendBulkAPI(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple, curlUrl, token);
     }
-    if (resp.status === 200 || resp.status === 201) {
-        stateUpdateContent = JSON.stringify({ state: 'enabled', message: '' });
-    } else {
+
+    if (resp.status !== 200 && resp.status !== 201) {
         stateUpdateContent = JSON.stringify({ state: 'unhealthy', message: resp.message.message });
+        datasourceStateUpdate(apihost, platformApiPrefix, stateUpdateContent, token, porg, dataSourceLocation);
     }
-    datasourceStateUpdate(apihost, stateUpdateContent, token, porg, dataSourceLocation);
     return resp;
 
 };
 
+let sendBulkAPI = async function(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple, curlUrl, token) {
+    let resp;
+    await zipDirectory(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple);
+    const formData = new FormData();
+    // let data = await axios.toFormData({'zip':fs.createReadStream('myfile.zip')},form);
+    formData.append('zip', fs.createReadStream(workspacePath + '/' + outputFile), {
+        name: outputFile,
+        contentType: 'application/zip'
+    });
+    resp = await createOrUpdateApiInternal(curlUrl + '/bulk', token, formData, 'POST', 'multipart/form-data');
+    fs.unlink(outputFile, (err) => {
+        if (err) {
+            throw err;
+        }
+    });
+    return resp;
+};
 let zipDirectory = async function(dataSourceLocation, workspacePath, apisArray, isFolder, isMultiple) {
     if (isFolder) {
         for (let folder of apisArray) {
@@ -77,6 +90,8 @@ let zipDirectory = async function(dataSourceLocation, workspacePath, apisArray, 
         for (let element of apisArray) {
             await createFormattedAPI(workspacePath + '/' + element.trim(), dataSourceLocation, true);
         }
+    } else {
+        await createFormattedAPI(workspacePath + '/' + apisArray[0].trim(), dataSourceLocation, true);
     }
     await zip.writeZip(outputFile);
 };
@@ -108,6 +123,7 @@ let createOrUpdateApiInternal = async function(curlUrl, token, bodyContent, meth
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
                 'Content-Type': contentType,
+                'x-ibm-record-api-version': RECORD_API_VERSION,
                 responseType: 'text'
             }
         })
@@ -124,13 +140,19 @@ let createOrUpdateApiInternal = async function(curlUrl, token, bodyContent, meth
     }
 };
 
-let datasourceStateUpdate = async function(apihost, bodyContent, token, porg, dataSourceLocation) {
+let datasourceStateUpdate = async function(apihost, platformApiPrefix, bodyContent, token, porg, dataSourceLocation) {
+    let resp;
     try {
-        await axios.patch(`https://discovery-api.${apihost}/discovery/orgs/${porg}/data-sources/${encodeURIComponent(dataSourceLocation)}`, bodyContent, {
+        dataSourceLocation = dataSourceLocation.replaceAll('/', '-');
+        resp = await axios.patch(`https://${platformApiPrefix}.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, bodyContent, {
             headers: {
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
                 'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.data.status === 404) {
+                return;
             }
         });
     } catch (error) {
@@ -138,41 +160,39 @@ let datasourceStateUpdate = async function(apihost, bodyContent, token, porg, da
         return { status: 500, message: error };
     }
 };
-let checkAndRegisterDataSource = async function(apihost, token, porg, dataSourceLocation) {
+let checkAndRegisterDataSource = async function(apihost, platformApiPrefix, token, porg, dataSourceLocation) {
     // Use this function to perform the datasource registration. If the dataSource doesn't exist create it
     let resp;
     try {
-        resp = await axios.get(`https://discovery-api.${apihost}/discovery/orgs/${porg}/data-sources/${encodeURIComponent(dataSourceLocation)}`, {
+        dataSourceLocation = dataSourceLocation.replaceAll('/', '-');
+        resp = await axios.get(`https://${platformApiPrefix}.${apihost}/discovery/orgs/${porg}/data-sources/${dataSourceLocation}`, {
             headers: {
                 Authorization: 'Bearer ' + token,
                 Accept: 'application/json',
                 'Content-Type': 'application/json'
-
+            }
+        }).then(response => {
+            if (response.data.status === 404) {
+                const bodyContent = JSON.stringify({ title: dataSourceLocation, collector_type: COLLECTOR_TYPE });
+                resp = axios.post(`https://${platformApiPrefix}.${apihost}/discovery/orgs/${porg}/data-sources`, bodyContent, {
+                    headers: {
+                        Authorization: 'Bearer ' + token,
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
             }
         });
-        if (resp.status === 404) {
-            const bodyContent = JSON.stringify({ title: dataSourceLocation, collector_type: COLLECTOR_TYPE });
-            resp = await axios.post(`https://discovery-api.${apihost}/discovery/orgs/${porg}/data-sources`, bodyContent, {
-                headers: {
-                    Authorization: 'Bearer ' + token,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json'
-
-                }
-            });
-        }
     } catch (error) {
-        console.log(error);
         return { status: 500, message: error };
     }
-    return resp;
 
 };
 
-let getAuthToken = async function(apihost, apikey) {
+let getAuthToken = async function(apihost, platformApiPrefix, apikey) {
 
     var bodyContent = JSON.stringify({ grant_type: 'api_key', api_key: apikey, realm: 'provider/default-idp-2' });
-    const token = await axios.post(`https://platform-api.${apihost}/discovery/token`, bodyContent, {
+    const token = await axios.post(`https://${platformApiPrefix}.${apihost}/discovery/token`, bodyContent, {
         headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json'
@@ -17719,7 +17739,8 @@ async function run() {
         const datasourceCheck = core.getInput('resync_check');
         const apisLocation = core.getInput('api_files') || core.getInput('api_folders');
         const filesChanged = core.getInput('git_diff');
-
+        const platformApiPrefix = core.getInput('platform_api_prefix') ? core.getInput('platform_api_prefix') : 'platform-api';
+        const nodeTlsRejectUnauthorized = (core.getInput('insecure_skip_tls_verify').toLowerCase() === 'true');
         if (core.getInput('api_files')) {
             isFolder = false;
         } else if (core.getInput('api_folders')) {
@@ -17739,26 +17760,25 @@ async function run() {
                 }
             }
             if (checkChanges) {
-                await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
+                await execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized);
             } else {
                 core.setOutput('action-result', 'No files changed from the previous commit to send to Discovery Service');
             }
         } else {
-            await execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation);
+            await execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized);
         }
     } catch (error) {
         core.setFailed(error.message);
     }
 }
 
-async function execution(apihost, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation) {
+async function execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized) {
     try {
         core.info(`apihost ${apihost}`);
         core.info(`porg ${porg}`);
         isFolder && core.info(`apifolders ${apisLocation}`) || core.info(`apifiles ${apisLocation}`);
         core.info(`datasourceCheck ${datasourceCheck}`);
-
-        var resp = await createOrUpdateDiscoveredApi(workspacePath, apihost, apikey, porg, apisLocation, githubServer + '/' + repoLocation, datasourceCheck, isFolder);
+        var resp = await createOrUpdateDiscoveredApi(workspacePath, apihost, platformApiPrefix, apikey, porg, apisLocation, githubServer + '/' + repoLocation, datasourceCheck, isFolder, nodeTlsRejectUnauthorized);
         core.info(`response: status: ${resp.status}, message: ${resp.message[0]}`);
 
         core.setOutput('action-result', `response: status: ${resp.status}, message: ${resp.message[0]}`);
