@@ -1,5 +1,5 @@
 name: 'Create or Update Discovered APIs'
-description: 'Creates or updates the targeted api files'
+description: 'Creates or updates the targeted api files and MCP files'
 inputs:
   api_host:
     description: 'Domain name of the ApiConnect instance where discovered APIs will be sent'
@@ -16,12 +16,18 @@ inputs:
   provider_org:  
     description: 'Name of ID of provider org to us'
     required: true
-  api_files:  
+  api_files:
     description: 'One or more file names of the APIs to sync with apiconnect discovery repo'
-    required: true
-  api_folders:  
+    required: false
+  api_folders:
     description: 'One or more folder names containing APIs to sync with apiconnect discovery repo'
-    required: true
+    required: false
+  mcp_files:
+    description: 'One or more MCP configuration or server manifest files to sync with apiconnect discovery repo'
+    required: false
+  mcp_folders:
+    description: 'One or more folders to recursively scan for MCP configuration files and server manifests to sync with apiconnect discovery repo'
+    required: false
   resync_check:
      description: 'Indicates if a check for datasource existance and resync is required'
      required: false
@@ -31,7 +37,7 @@ inputs:
 
 outputs:
   action-result:
-    description: 'Result of operation to add apis to apiconnect discovery repo'  
+    description: 'Result of operation to add apis and MCP data to apiconnect discovery repo'
 runs:
   using: 'node20'
   main: 'dist/index.js'
