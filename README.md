@@ -1,6 +1,6 @@
 # Create an APIConnect Discovery Action
 
-The APIConnect Discovery Action allows you to send and keep in sync your OpenAPI reference documents with APIConnect.
+The APIConnect Discovery Action allows you to send and keep in sync your OpenAPI reference documents and MCP servers with APIConnect.
 The action will sync the documents with the discovery service repository in APIConnect and from there they can be promoted
 as required to be managed by APIConnect through their entire lifecycle.
 
@@ -16,15 +16,17 @@ The following parameters are always required:
 - PLATFORM_API_PREFIX - The Platform API prefix has a default value of `platform-api`, the same as the prefix value for APIConnect on Cloud. It can be changed to match your system setup if it is different from the default
 - INSECURE_SKIP_TLS_VERIFY - If set to true the action skips the validity check for the server's certificate. This may be required in the case where your APIConnect system is using self-signed certificates. Note: Setting this will make your HTTPS connections insecure.
 - PROVIDER_ORG - The provider org name of the APIConnect manager.
-- API_FILES - One or more file names of the APIs to sync with the APIConnect discovery repo separated by a comma.<br /> &nbsp; Example : `gmail-api.json,gmail-api.yaml,mit-api.json,APIfolder/petstore-exp.json`
-- API_FOLDERS - One or more folder names containing APIs to sync with the APIConnect discovery repo separated by a comma. <br /> &nbsp; Example: `APIFiles, APIFolders`
+- API_FILES - (Optional) One or more file names of the APIs to sync with the APIConnect discovery repo separated by a comma.<br /> &nbsp; Example : `gmail-api.json,gmail-api.yaml,mit-api.json,APIfolder/petstore-exp.json`
+- API_FOLDERS - (Optional) One or more folder names containing APIs to sync with the APIConnect discovery repo separated by a comma. <br /> &nbsp; Example: `APIFiles, APIFolders`
+- MCP_FILES - (Optional) One or more MCP configuration or server manifest files (json, yaml or yml) to sync with the APIConnect discovery repo separated by a comma.<br /> &nbsp; Example : `mcp.json,server.yaml`
+- MCP_FOLDERS - (Optional) One or more folders to recursively scan for MCP configuration files and server manifests to sync with the APIConnect discovery repo separated by a comma.<br /> &nbsp; Example : `mcps`
 - resync_check: Indicates if changes to the action like at initial creation should trigger an api-file sync.
-- git_diff: (Optional) Git diff between the current and the previous commit. If multiple files have changed in the commit, the workflow will run only if one of the files supplied in `API_FILES` or `API_FOLDERS` has changed.
+- git_diff: (Optional) Git diff between the current and the previous commit. If multiple files have changed in the commit, the workflow will run only if one of the files supplied in `API_FILES`, `API_FOLDERS`, `MCP_FILES` or `MCP_FOLDERS` has changed.
 - apikey - An API Key can be obtained from the APIConnect manager for the user who has access to post the API.<br />
 An API key can be created by logging into the APIConnect Manager UI and selecting the "My API Keys" option under the profile icon from the top navigation bar. It is good practice to store any sensitive data like the apikey as a GitHub action secret. See [here](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository) for more details. For the sample below the GitHub secret should be called `apicApikey` as it will need to match the following templated value  
 ${{ secrets.apicApikey }} 
 
-The format of the API documents can be json or yaml. Among the parameters used, either `API_FILES` or `API_FOLDERS` must be supplied according to how the API documents are sent. The APIs can be sent to the APIConnect discovery service in any one of the following ways - single/multiple documents or folder/folders with APIs documents in it. Single and multiple documents will be supplied through the `API_FILES` param and single and multiple folders with many API files inside will be supplied through the `API_FOLDERS` param.<br /> 
+The format of the API documents can be json or yaml. Among the parameters used, at least one of `API_FILES`, `API_FOLDERS`, `MCP_FILES` or `MCP_FOLDERS` must be supplied (APIs, MCP servers, or both). For APIs, either `API_FILES` or `API_FOLDERS` is used according to how the API documents are sent. MCP servers are sent through `MCP_FILES` and/or `MCP_FOLDERS` and can be combined with APIs in the same run. The APIs can be sent to the APIConnect discovery service in any one of the following ways - single/multiple documents or folder/folders with APIs documents in it. Single and multiple documents will be supplied through the `API_FILES` param and single and multiple folders with many API files inside will be supplied through the `API_FOLDERS` param.<br /> 
 To send the documents, create the workflow in your GitHub repository similar to one of the samples below
 
 To create the workflow action in your GitHub repository do the following
@@ -43,6 +45,8 @@ env:
   PLATFORM_API_PREFIX: <platform-api-prefix>
   PROVIDER_ORG: <porg-name>
   API_FILES: <file/files name>
+  MCP_FILES: <mcp file/files name>
+  MCP_FOLDERS: <mcp folder/folders name>
 
 jobs:
   run-discovery:
@@ -64,8 +68,11 @@ jobs:
         api_files: ${{ env.API_FILES }}
         else if: env.API_FOLDERS
         api_folders: ${{ env.API_FOLDERS }}
+        mcp_files: ${{ env.MCP_FILES }}
+        mcp_folders: ${{ env.MCP_FOLDERS }}
         resync_check: ${{ true }}
         git_diff: ${{ steps.difference-output.outputs.action_updates }}
+        insecure_skip_tls_verify: ${{ env.INSECURE_SKIP_TLS_VERIFY }}
     - name: Display the action-result
       run: |
         echo "Result of the action: ${{ steps.discover-apis.outputs.action-result }}"
@@ -74,7 +81,7 @@ jobs:
 
 In the above yml content, env and jobs are described to send API documents.<br /> 
 The job works as follows, on a push commit to the GitHub repo the specified `api_files` will be sent to the discovery service repo of the given `provider_org` at location `api_host` using the `api_key` to authenticate with the discovery service.<br />
-The job will send the git diff of the files between the previous commit and the current commit and the discovery action will verify whether any of the changed files include files supplied in `API_FILES` or `API_FOLDERS`.<br />
+The job will send the git diff of the files between the previous commit and the current commit and the discovery action will verify whether any of the changed files include files supplied in `API_FILES`, `API_FOLDERS`, `MCP_FILES` or `MCP_FOLDERS`.<br />
 `API_FILES` can be replaced with `API_FOLDERS` when the entire folder/folders needs to be sent. This can be used when the git push has multiple files and needs to run the workflow when any of the supplied files changes.
 
 ```
@@ -90,7 +97,7 @@ env:
 
 jobs:
   check_changes_job:
-    runs-on: 'ubuntu-20.04'
+    runs-on: ubuntu-latest
     # Declare outputs for next jobs
     outputs:
       action_changed: ${{ steps.check_workflow_changed.outputs.action_updates }}
@@ -132,6 +139,7 @@ jobs:
         else if: env.API_FOLDERS
         api_folders: ${{ env.API_FOLDERS }}
         resync_check: ${{ needs.check_changes_job.outputs.action_changed && true || false }}
+        insecure_skip_tls_verify: ${{ env.INSECURE_SKIP_TLS_VERIFY }}
     - name: Display the action-result
       run: |
         echo "Result of the action: ${{ steps.discover-apis.outputs.action-result }}"
