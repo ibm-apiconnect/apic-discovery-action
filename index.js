@@ -119,6 +119,7 @@ async function executeMcpCollection(params) {
         core.info(`datasourceCheck ${dataSourceCheck}`);
         var resp = await createOrUpdateDiscoveredMcp(params);
         resp.skipped.forEach(item => core.warning(`Skipping MCP file ${item.file}: ${item.reason}`));
+        resp.warning && core.warning(resp.message[0]);
         core.info(`response: status: ${resp.status}, message: ${resp.message[0]}`);
 
         if (![ 200, 201, 304 ].includes(resp.status)) {

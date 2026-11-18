@@ -348,6 +348,9 @@ let createOrUpdateDiscoveredMcp = async function({ connection, source, dataSourc
     }
     try {
         const res = await axios.post(curlUrl, JSON.stringify(request), { headers: { ...headers, Authorization: 'Bearer ' + token } });
+        if (res.data.queued === false) {
+            return { status: res.status, warning: true, message: [ `${res.data.total_submitted} MCP server(s) were received, but none were queued for processing. API Security may be disabled, or the Discovery Service may not be ready.` ], skipped };
+        }
         return { status: res.status, message: [ `POST operation on ${res.data.total_submitted} MCP server(s) has been successful` ], skipped };
     } catch (err) {
         console.log(err);
