@@ -15,6 +15,10 @@ const AdmZip = __nccwpck_require__(6761);
 
 const COLLECTOR_TYPE = 'github';
 const RECORD_API_VERSION = '1.0';
+const MCP_EXTENSIONS = [ '.json', '.yaml', '.yml' ];
+const MCP_CLASSIFICATION = 'MCP';
+// Keys that hold a map of server name -> server config in MCP client config files
+const MCP_SERVER_CONTAINER_KEYS = [ 'mcpServers', 'servers' ];
 // process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const zip = new AdmZip();
 const outputFile = 'multipleAPIfiles.zip';
@@ -204,7 +208,165 @@ let getAuthToken = async function(apihost, platformApiPrefix, apikey) {
     return token;
 };
 
-module.exports = { createOrUpdateDiscoveredApi };
+let isSupportedMcpFile = function(file) {
+    return MCP_EXTENSIONS.includes(path.extname(file).toLowerCase());
+};
+
+let listMcpFolderFiles = function(workspacePath, folder) {
+    const found = [];
+    const walk = function(dir) {
+        for (const entry of fs.readdirSync(path.join(workspacePath, dir), { withFileTypes: true })) {
+            const relativePath = path.posix.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                walk(relativePath);
+            } else if (entry.isFile() && isSupportedMcpFile(entry.name)) {
+                found.push(relativePath);
+            }
+        }
+    };
+    walk(folder);
+    return found;
+};
+
+let parseMcpFile = function(absolutePath) {
+    const stringContent = fs.readFileSync(absolutePath, 'utf8');
+    return path.extname(absolutePath).toLowerCase() === '.json' ? JSON.parse(stringContent) : yaml.load(stringContent);
+};
+
+// Identify potential MCP server definitions by the presence of a command or URL.
+let isMcpServerDefinition = function(config) {
+    if (!config || typeof config !== 'object' || Array.isArray(config)) {
+        return false;
+    }
+    const command = Array.isArray(config.command) ? config.command[0] : config.command;
+    const hasCommand = typeof command === 'string' && command.trim() !== '';
+    const hasUrl = typeof config.url === 'string' && config.url.trim() !== '';
+    return hasCommand || hasUrl;
+};
+
+// Identify potential MCP Registry manifests by their name, version, and package or remote definitions.
+const isRegistryManifest = doc =>
+    typeof doc.name === 'string' &&
+    typeof doc.version === 'string' &&
+    (
+        (Array.isArray(doc.packages) && doc.packages.length > 0) ||
+        (Array.isArray(doc.remotes) && doc.remotes.length > 0)
+    );
+
+// Extract MCP servers from client configuration files (server maps) or server manifests.
+let extractMcpServers = function(doc) {
+    if (!doc || typeof doc !== 'object' || Array.isArray(doc) || Object.keys(doc).length === 0) {
+        return null;
+    }
+    // Extract server entries from recognised MCP configuration containers.
+    for (const key of MCP_SERVER_CONTAINER_KEYS) {
+        const container = doc[key];
+        if (container && typeof container === 'object' && !Array.isArray(container)) {
+            return Object.entries(container)
+            .filter(([ , config ]) => config && typeof config === 'object' && !Array.isArray(config) && Object.keys(config).length > 0)
+            .map(([ name, config ]) => ({ name, config }));
+        }
+    }
+    // Identify standalone server definitions or registry manifests.
+    return isMcpServerDefinition(doc) || isRegistryManifest(doc) ? [ { name: doc.name, config: doc } ] : null;
+};
+
+let buildMcpRecord = function(name, config, sourceFile) {
+    const serverName = name ? String(name) : undefined;
+    const title = typeof config.title === 'string' && config.title ? config.title : undefined;
+    return {
+        ...(serverName && { name: serverName.slice(0, 255) }),
+        ...(title && { title: title.slice(0, 1023) }),
+        ...(typeof config.description === 'string' && { description: config.description }),
+        ...(typeof config.version === 'string' && { version: config.version }),
+        classification: MCP_CLASSIFICATION,
+        content_type: 'application/json',
+        content: { name: serverName, ...config, source_file: sourceFile }
+    };
+};
+
+let buildMcpDiscoveryRequest = function(source, dataSourceLocation) {
+    const { workspacePath, files: configuredFiles, folders, changedFiles } = source;
+    const skipped = [];
+    const records = [];
+    let files;
+    // Use changed files when available; otherwise collect files from the configured paths.
+    if (changedFiles) {
+        files = changedFiles;
+    } else {
+        files = [];
+        for (const file of configuredFiles) {
+            if (isSupportedMcpFile(file)) {
+                files.push(file);
+            } else {
+                skipped.push({ file, reason: `unsupported file type (only ${MCP_EXTENSIONS.join(', ')} are supported)` });
+            }
+        }
+        for (const folder of folders) {
+            try {
+                files = files.concat(listMcpFolderFiles(workspacePath, folder));
+            } catch (err) {
+                skipped.push({ file: folder, reason: err.message });
+            }
+        }
+    }
+    // Extract MCP servers from each unique file and build their records.
+    for (const file of new Set(files.map(item => path.posix.normalize(item)))) {
+        try {
+            const doc = parseMcpFile(path.join(workspacePath, file));
+            const servers = extractMcpServers(doc);
+            if (!servers || servers.length === 0) {
+                skipped.push({ file, reason: 'no MCP server definitions found' });
+                continue;
+            }
+            servers.forEach(({ name, config }) => records.push(buildMcpRecord(name, config, file)));
+        } catch (err) {
+            skipped.push({ file, reason: err.message });
+        }
+    }
+    return {
+        request: { data_source: { source: dataSourceLocation, collector_type: COLLECTOR_TYPE }, records },
+        skipped
+    };
+};
+
+let createOrUpdateDiscoveredMcp = async function({ connection, source, dataSourceLocation, dataSourceCheck }) {
+    const { apihost, platformApiPrefix, apikey, porg, nodeTlsRejectUnauthorized } = connection;
+    const { request, skipped } = buildMcpDiscoveryRequest(source, dataSourceLocation);
+    if (request.records.length === 0) {
+        return { status: 304, message: [ 'No valid MCP server definitions to send to Discovery Service' ], skipped };
+    }
+    if (!apikey) {
+        return { status: 304, message: [ 'Warning: create Or Update Discovered Mcp not run as apikey is missing' ], skipped };
+    }
+    const curlUrl = `https://${platformApiPrefix}.${apihost}/discovery/orgs/${porg}/discovered-objects`;
+    const headers = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'x-ibm-record-api-version': RECORD_API_VERSION
+    };
+
+    if (nodeTlsRejectUnauthorized) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    }
+    var token = await getAuthToken(apihost, platformApiPrefix, apikey);
+    if (dataSourceCheck) {
+        await checkAndRegisterDataSource(apihost, platformApiPrefix, token, porg, request.data_source.source);
+    }
+    try {
+        const res = await axios.post(curlUrl, JSON.stringify(request), { headers: { ...headers, Authorization: 'Bearer ' + token } });
+        if (res.data.queued === false) {
+            return { status: res.status, warning: true, message: [ `${res.data.total_submitted} MCP server(s) were received, but none were queued for processing. API Security may be disabled, or the Discovery Service may not be ready.` ], skipped };
+        }
+        return { status: res.status, message: [ `POST operation on ${res.data.total_submitted} MCP server(s) has been successful` ], skipped };
+    } catch (err) {
+        console.log(err);
+        const response = err.response || {};
+        return { status: response.status || 500, message: [ (response.data && response.data.message) || err.message ], skipped };
+    }
+};
+
+module.exports = { createOrUpdateDiscoveredApi, createOrUpdateDiscoveredMcp, isSupportedMcpFile };
 
 
 /***/ }),
@@ -19721,9 +19883,9 @@ var __webpack_exports__ = {};
 (() => {
 "use strict";
 
+const path = __nccwpck_require__(1017);
 const core = __nccwpck_require__(2186);
-const { createOrUpdateDiscoveredApi } = __nccwpck_require__(607);
-
+const { createOrUpdateDiscoveredApi, createOrUpdateDiscoveredMcp, isSupportedMcpFile } = __nccwpck_require__(607);
 
 // most @actions toolkit packages have async methods
 async function run() {
@@ -19740,6 +19902,17 @@ async function run() {
         const filesChanged = core.getInput('git_diff');
         const platformApiPrefix = core.getInput('platform_api_prefix') ? core.getInput('platform_api_prefix') : 'platform-api';
         const nodeTlsRejectUnauthorized = (core.getInput('insecure_skip_tls_verify').toLowerCase() === 'true');
+        const mcpFiles = core.getInput('mcp_files');
+        const mcpFolders = core.getInput('mcp_folders');
+        const filesArray = filesChanged.split(' ');
+        const results = [];
+
+        if (!apisLocation && !mcpFiles && !mcpFolders) {
+            core.setFailed('Error: create Or Update Discovered Api/Mcp not run as API files, API folders, MCP files or MCP folders parameter is missing or Empty');
+            return;
+        }
+
+        // API collection
         if (core.getInput('api_files')) {
             isFolder = false;
         } else if (core.getInput('api_folders')) {
@@ -19747,7 +19920,6 @@ async function run() {
         }
         if (filesChanged.trim() && apisLocation) {
             let checkChanges = false;
-            let filesArray = filesChanged.split(' ');
             let apisLocationArray = apisLocation.split(',');
             if (isFolder) {
                 for (let name of apisLocationArray) {
@@ -19759,19 +19931,51 @@ async function run() {
                 }
             }
             if (checkChanges) {
-                await execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized);
+                results.push(await executeApiCollection(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized));
             } else {
-                core.setOutput('action-result', 'No files changed from the previous commit to send to Discovery Service');
+                results.push('No files changed from the previous commit to send to Discovery Service');
+            }
+        } else if (apisLocation) {
+            results.push(await executeApiCollection(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized));
+        }
+
+        // MCP collection
+        const mcpFilesArray = splitList(mcpFiles);
+        const mcpFoldersArray = splitList(mcpFolders);
+        if (mcpFilesArray.length > 0 || mcpFoldersArray.length > 0) {
+            let changedMcpFiles;
+            if (filesChanged.trim()) {
+                changedMcpFiles = filesArray.filter(file => isSupportedMcpFile(file) &&
+                    (mcpFilesArray.includes(file) || mcpFoldersArray.some(folder => isInFolder(file, folder))));
+                core.info(`mcp files changed: ${changedMcpFiles.join(', ') || 'none'}`);
+            }
+            if (!changedMcpFiles || changedMcpFiles.length > 0) {
+                // changedMcpFiles is undefined when git_diff is not provided (collect everything)
+                results.push(await executeMcpCollection({
+                    connection: { apihost, platformApiPrefix, apikey, porg, nodeTlsRejectUnauthorized },
+                    source: { workspacePath, files: mcpFilesArray, folders: mcpFoldersArray, changedFiles: changedMcpFiles },
+                    dataSourceLocation: githubServer + '/' + repoLocation,
+                    dataSourceCheck: datasourceCheck
+                }));
+            } else {
+                results.push('No MCP files changed from the previous commit to send to Discovery Service');
             }
         } else {
-            await execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized);
+            core.warning('MCP files and MCP folders parameters contain no file or folder names, MCP collection skipped');
+            results.push('No valid MCP files or folders specified to send to Discovery Service');
+        }
+
+        // Single action-result for both collections
+        const output = results.filter(Boolean).join('\n');
+        if (output) {
+            core.setOutput('action-result', output);
         }
     } catch (error) {
         core.setFailed(error.message);
     }
 }
 
-async function execution(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized) {
+async function executeApiCollection(apihost, platformApiPrefix, porg, isFolder, apisLocation, datasourceCheck, workspacePath, apikey, githubServer, repoLocation, nodeTlsRejectUnauthorized) {
     try {
         core.info(`apihost ${apihost}`);
         core.info(`porg ${porg}`);
@@ -19780,14 +19984,44 @@ async function execution(apihost, platformApiPrefix, porg, isFolder, apisLocatio
         var resp = await createOrUpdateDiscoveredApi(workspacePath, apihost, platformApiPrefix, apikey, porg, apisLocation, githubServer + '/' + repoLocation, datasourceCheck, isFolder, nodeTlsRejectUnauthorized);
         core.info(`response: status: ${resp.status}, message: ${resp.message[0]}`);
 
-        core.setOutput('action-result', `response: status: ${resp.status}, message: ${resp.message[0]}`);
+        if (![ 200, 201, 304 ].includes(resp.status)) {
+            core.setFailed(resp.message[0]);
+        }
+        return `response: status: ${resp.status}, message: ${resp.message[0]}`;
+    } catch (error) {
+        core.setFailed(error.message);
+    }
+}
+
+async function executeMcpCollection(params) {
+    try {
+        const { connection, source, dataSourceCheck } = params;
+        core.info(`apihost ${connection.apihost}`);
+        core.info(`porg ${connection.porg}`);
+        core.info(`mcpfiles ${source.files.join(', ')}`);
+        core.info(`mcpfolders ${source.folders.join(', ')}`);
+        core.info(`datasourceCheck ${dataSourceCheck}`);
+        var resp = await createOrUpdateDiscoveredMcp(params);
+        resp.skipped.forEach(item => core.warning(`Skipping MCP file ${item.file}: ${item.reason}`));
+        resp.warning && core.warning(resp.message[0]);
+        core.info(`response: status: ${resp.status}, message: ${resp.message[0]}`);
 
         if (![ 200, 201, 304 ].includes(resp.status)) {
             core.setFailed(resp.message[0]);
         }
+        return `response: status: ${resp.status}, message: ${resp.message[0]}`;
     } catch (error) {
         core.setFailed(error.message);
     }
+}
+
+function splitList(value) {
+    return value.split(',').map(item => item.trim()).filter(Boolean);
+}
+
+function isInFolder(file, folder) {
+    const dir = path.posix.normalize(folder);
+    return path.posix.normalize(file).startsWith(dir.endsWith('/') ? dir : dir + '/');
 }
 
 run();
